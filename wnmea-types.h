@@ -65,8 +65,16 @@ static const Utility_Version_t WNMEA_FIRMWARE_VERSION =
 typedef enum _WNMEA_Errors_t
 {
     WNMEA_ERROR_SUCCESS            = 0x0000,
+    WNMEA_ERROR_WRONG_MESSAGE      = 0x0001,
+
+    WNMEA_ERROR_MESSAGE_READY      = 0xFFFF,
 
 } WNMEA_Error_t;
+
+#if !defined (WNMEA_BUFFER_DIMENSION)
+#define WNMEA_BUFFER_DIMENSION                   0x01FFu
+#endif
+
 
 /*!
  * \}

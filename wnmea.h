@@ -63,7 +63,7 @@ extern "C"
  * \{
  */
 
-#include "wcdli-types.h"
+#include "wnmea-types.h"
 
 #include <stdarg.h>
 #include <stdio.h>
