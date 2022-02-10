@@ -92,20 +92,28 @@ typedef enum _WNMEA_Constellation_t
 {
     WNMEA_CONSTELLATION_GPS,
     WNMEA_CONSTELLATION_GLONASS,
-    WNMEA_CONSTELLATION_GLONASS_GPS,
+    WNMEA_CONSTELLATION_GALILEO,
+    WNMEA_CONSTELLATION_BEIDOU,
+    WNMEA_CONSTELLATION_NAVIC,
+    WNMEA_CONSTELLATION_MULTIPLE,
+
+    WNMEA_CONSTELLATION_UNKNOW,
 
 } WNMEA_Constellation_t;
 
 typedef struct _WNMEA_Message_t
 {
-    WNMEA_Constellation_t constellation;
-
-    char                  type[WNMEA_MESSAGE_TYPE_LENGTH];
-    char                  body[WNMEA_MESSAGE_BODY_LENGTH];
-    char                  checksum[WNMEA_MESSAGE_CRC_LENGTH];
+    char type[WNMEA_MESSAGE_TYPE_LENGTH];
+    char body[WNMEA_MESSAGE_BODY_LENGTH];
+    char checksum[WNMEA_MESSAGE_CRC_LENGTH];
 
 } WNMEA_Message_t;
 
+typedef struct _WNMEA_MessageParsed_t
+{
+    WNMEA_Constellation_t constellation;
+
+} WNMEA_MessageParsed_t, *WNMEA_MessageParsedHandle_t;
 
 /*!
  * \}

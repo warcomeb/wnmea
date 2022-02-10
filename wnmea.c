@@ -33,9 +33,12 @@
 #endif
 
 
-#define WNMEA_CONSTELLATION_GPS                  "GP"
-#define WNMEA_CONSTELLATION_GLONASS              "GL"
-#define WNMEA_CONSTELLATION_BOTH                 "GN"
+#define WNMEA_CONSTELLATION_STRING_GPS           "GP"
+#define WNMEA_CONSTELLATION_STRING_GLONASS       "GL"
+#define WNMEA_CONSTELLATION_STRING_GALILEO       "GA"
+#define WNMEA_CONSTELLATION_STRING_BEIDOU        "GB" // China
+#define WNMEA_CONSTELLATION_STRING_NAVIC         "GI" // India
+#define WNMEA_CONSTELLATION_STRING_MULTIPLE      "GN"
 
 #define WNMEA_MESSAGE_TYPE_GGA                   "GGA"
 #define WNMEA_MESSAGE_TYPE_GSA                   "GSA"
@@ -59,7 +62,6 @@ typedef enum _WNMEA_ParseState_t
     WNMEA_PARSESTATE_TYPE,
     WNMEA_PARSESTATE_DATA,
     WNMEA_PARSESTATE_CHECKSUM,
-    WNMEA_PARSESTATE_EOP,
 
 } WNMEA_ParseState_t;
 
@@ -79,8 +81,10 @@ static WNMEA_ParseState_t mState = WNMEA_PARSESTATE_SOP;
 
 static uint16_t mChecksum = 0;
 
-static WNMEA_Message_t mCurrentMessage = {0};
-static uint8_t         mCurrentMessagePoistion = 0;
+static WNMEA_Message_t mMessage = {0};
+static uint8_t         mMessagePoistion = 0;
+
+static WNMEA_MessageParsed_t mMessageParsed = {0};
 
 /*!
  * This function is used to reset the message process state machine.
@@ -90,7 +94,7 @@ static void reset (void)
     mState = WNMEA_PARSESTATE_SOP;
     mChecksum = 0;
 
-    mCurrentMessagePoistion = 0;
+    mMessagePoistion = 0;
 }
 
 /*!
@@ -117,8 +121,8 @@ static WNMEA_Error_t process (char c)
             // Reset checksum variable
             mChecksum = 0;
             // Clear message variables
-            memset(&mCurrentMessage,0,sizeof(WNMEA_Message_t));
-            mCurrentMessagePoistion = 0;
+            memset(&mMessage,0,sizeof(WNMEA_Message_t));
+            mMessagePoistion = 0;
             // Set next state
             mState = WNMEA_PARSESTATE_TYPE;
             // TODO: Add timeout?
@@ -133,7 +137,7 @@ static WNMEA_Error_t process (char c)
         if (c == WNMEA_CHAR_SEPARATOR)
         {
             // Jump to the next state...
-            mCurrentMessagePoistion = 0;
+            mMessagePoistion = 0;
             mState = WNMEA_PARSESTATE_DATA;
 
             // Compute checksum
@@ -143,10 +147,10 @@ static WNMEA_Error_t process (char c)
             return WNMEA_ERROR_MESSAGE_PARSING;
         }
 
-        mCurrentMessage.type[mCurrentMessagePoistion++] = c;
+        mMessage.type[mMessagePoistion++] = c;
 
         // The message is not good! Clear all...
-        if (mCurrentMessagePoistion >= WNMEA_MESSAGE_TYPE_LENGTH)
+        if (mMessagePoistion >= WNMEA_MESSAGE_TYPE_LENGTH)
         {
             reset();
             return WNMEA_ERROR_WRONG_MESSAGE;
@@ -165,7 +169,7 @@ static WNMEA_Error_t process (char c)
         if (c == WNMEA_CHAR_STOP)
         {
             // Jump to the next state...
-            mCurrentMessagePoistion = 0;
+            mMessagePoistion = 0;
             mState = WNMEA_PARSESTATE_CHECKSUM;
 
             // Return without errors...
@@ -174,13 +178,13 @@ static WNMEA_Error_t process (char c)
         else
         {
             // The message is not good! Clear all...
-            if (mCurrentMessagePoistion >= WNMEA_MESSAGE_BODY_LENGTH)
+            if (mMessagePoistion >= WNMEA_MESSAGE_BODY_LENGTH)
             {
                 reset();
                 return WNMEA_ERROR_WRONG_MESSAGE;
             }
 
-            mCurrentMessage.body[mCurrentMessagePoistion++] = c;
+            mMessage.body[mMessagePoistion++] = c;
             // Compute checksum
             mChecksum ^= c;
 
@@ -191,10 +195,10 @@ static WNMEA_Error_t process (char c)
         break;
 
     case WNMEA_PARSESTATE_CHECKSUM:
-        mCurrentMessage.checksum[mCurrentMessagePoistion++] = c;
-        if (mCurrentMessagePoistion == WNMEA_MESSAGE_CRC_LENGTH)
+        mMessage.checksum[mMessagePoistion++] = c;
+        if (mMessagePoistion == WNMEA_MESSAGE_CRC_LENGTH)
         {
-            if ((uint8_t) strtol(mCurrentMessage.checksum, null, 16) == mChecksum)
+            if ((uint8_t) strtol(mMessage.checksum, null, 16) == mChecksum)
             {
                 // Nice! The message is valid!
                 return WNMEA_ERROR_MESSAGE_READY;
@@ -213,9 +217,67 @@ static WNMEA_Error_t process (char c)
     return WNMEA_ERROR_SUCCESS;
 }
 
+static WNMEA_Constellation_t getConstellation (void)
+{
+    if (strncmp(mMessage.type,WNMEA_CONSTELLATION_STRING_GPS,2) != 0)
+    {
+        return WNMEA_CONSTELLATION_GPS;
+    }
+    else if (strncmp(mMessage.type,WNMEA_CONSTELLATION_STRING_GLONASS,2) != 0)
+    {
+        return WNMEA_CONSTELLATION_GLONASS;
+    }
+    else if (strncmp(mMessage.type,WNMEA_CONSTELLATION_STRING_GALILEO,2) != 0)
+    {
+        return WNMEA_CONSTELLATION_GALILEO;
+    }
+    else if (strncmp(mMessage.type,WNMEA_CONSTELLATION_STRING_BEIDOU,2) != 0)
+    {
+        return WNMEA_CONSTELLATION_BEIDOU;
+    }
+    else if (strncmp(mMessage.type,WNMEA_CONSTELLATION_STRING_NAVIC,2) != 0)
+    {
+        return WNMEA_CONSTELLATION_NAVIC;
+    }
+    else if (strncmp(mMessage.type,WNMEA_CONSTELLATION_STRING_MULTIPLE,2) != 0)
+    {
+        return WNMEA_CONSTELLATION_MULTIPLE;
+    }
+
+    return WNMEA_CONSTELLATION_UNKNOW;
+}
+
 static WNMEA_Error_t parse (void)
 {
+    // Reset parsed message variable
+    memset(&mMessageParsed,0,sizeof(WNMEA_MessageParsed_t));
 
+    // Check the message types
+    // It is a PMTK packet, useful for configuration...
+    if (strncmp(WNMEA_MESSAGE_TYPE_PMTK,mMessage.type,strlen(WNMEA_MESSAGE_TYPE_PMTK) == 0))
+    {
+        // TODO:  manage this message!
+    }
+    else
+    {
+        // Check whether the constellation type is valid!
+        if ((strncmp(mMessage.type,WNMEA_CONSTELLATION_STRING_GPS,2) != 0)     &&
+            (strncmp(mMessage.type,WNMEA_CONSTELLATION_STRING_GLONASS,2) != 0) &&
+            (strncmp(mMessage.type,WNMEA_CONSTELLATION_STRING_GALILEO,2) != 0) &&
+            (strncmp(mMessage.type,WNMEA_CONSTELLATION_STRING_BEIDOU,2) != 0)  &&
+            (strncmp(mMessage.type,WNMEA_CONSTELLATION_STRING_NAVIC,2) != 0)   &&
+            (strncmp(mMessage.type,WNMEA_CONSTELLATION_STRING_MULTIPLE,2) != 0))
+        {
+            // The constellation is not valid
+            return WNMEA_ERROR_WRONG_MESSAGE;
+        }
+
+        // Save the constellation
+        mMessageParsed.constellation = getConstellation();
+
+        // Check the message type, and parse message.
+
+    }
     return WNMEA_ERROR_SUCCESS;
 }
 
