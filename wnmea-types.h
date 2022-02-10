@@ -59,6 +59,18 @@ static const Utility_Version_t WNMEA_FIRMWARE_VERSION =
     .f.time     = WARCOMEB_WNMEA_LIBRARY_TIME,
 };
 
+#if !defined(WNMEA_MESSAGE_TYPE_LENGTH)
+#define WNMEA_MESSAGE_TYPE_LENGTH                10
+#endif
+
+#if !defined(WNMEA_MESSAGE_BODY_LENGTH)
+#define WNMEA_MESSAGE_BODY_LENGTH                100
+#endif
+
+#if !defined(WNMEA_MESSAGE_CRC_LENGTH)
+#define WNMEA_MESSAGE_CRC_LENGTH                 2
+#endif
+
 /*!
  * List of all possible errors.
  */
@@ -66,6 +78,7 @@ typedef enum _WNMEA_Errors_t
 {
     WNMEA_ERROR_SUCCESS            = 0x0000,
     WNMEA_ERROR_WRONG_MESSAGE      = 0x0001,
+    WNMEA_ERROR_MESSAGE_PARSING    = 0x0002,
 
     WNMEA_ERROR_MESSAGE_READY      = 0xFFFF,
 
@@ -74,6 +87,24 @@ typedef enum _WNMEA_Errors_t
 #if !defined (WNMEA_BUFFER_DIMENSION)
 #define WNMEA_BUFFER_DIMENSION                   0x01FFu
 #endif
+
+typedef enum _WNMEA_Constellation_t
+{
+    WNMEA_CONSTELLATION_GPS,
+    WNMEA_CONSTELLATION_GLONASS,
+    WNMEA_CONSTELLATION_GLONASS_GPS,
+
+} WNMEA_Constellation_t;
+
+typedef struct _WNMEA_Message_t
+{
+    WNMEA_Constellation_t constellation;
+
+    char                  type[WNMEA_MESSAGE_TYPE_LENGTH];
+    char                  body[WNMEA_MESSAGE_BODY_LENGTH];
+    char                  checksum[WNMEA_MESSAGE_CRC_LENGTH];
+
+} WNMEA_Message_t;
 
 
 /*!

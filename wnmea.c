@@ -77,6 +77,29 @@ static UtilityBuffer_Descriptor mBufferDescriptor;
 
 static WNMEA_ParseState_t mState = WNMEA_PARSESTATE_SOP;
 
+static uint16_t mChecksum = 0;
+
+static WNMEA_Message_t mCurrentMessage = {0};
+static uint8_t         mCurrentMessagePoistion = 0;
+
+/*!
+ * This function is used to reset the message process state machine.
+ */
+static void reset (void)
+{
+    mState = WNMEA_PARSESTATE_SOP;
+    mChecksum = 0;
+
+    mCurrentMessagePoistion = 0;
+}
+
+/*!
+ * This function process the new char extracted from the queue.
+ * Check whether the new char is coherent with the previous once,
+ * otherwise reset all and start again the message process.
+ *
+ * \return The process state.
+ */
 static WNMEA_Error_t process (char c)
 {
     if ((mState != WNMEA_PARSESTATE_SOP ) &&
@@ -89,32 +112,111 @@ static WNMEA_Error_t process (char c)
     switch (mState)
     {
     case WNMEA_PARSESTATE_SOP:
-
+        if (c == WNMEA_CHAR_START)
+        {
+            // Reset checksum variable
+            mChecksum = 0;
+            // Clear message variables
+            memset(&mCurrentMessage,0,sizeof(WNMEA_Message_t));
+            mCurrentMessagePoistion = 0;
+            // Set next state
+            mState = WNMEA_PARSESTATE_TYPE;
+            // TODO: Add timeout?
+            // Return without errors...
+            return WNMEA_ERROR_MESSAGE_PARSING;
+        }
         break;
 
     case WNMEA_PARSESTATE_TYPE:
 
+        // Check the first separator...
+        if (c == WNMEA_CHAR_SEPARATOR)
+        {
+            // Jump to the next state...
+            mCurrentMessagePoistion = 0;
+            mState = WNMEA_PARSESTATE_DATA;
+
+            // Compute checksum
+            mChecksum ^= c;
+
+            // Return without errors...
+            return WNMEA_ERROR_MESSAGE_PARSING;
+        }
+
+        mCurrentMessage.type[mCurrentMessagePoistion++] = c;
+
+        // The message is not good! Clear all...
+        if (mCurrentMessagePoistion >= WNMEA_MESSAGE_TYPE_LENGTH)
+        {
+            reset();
+            return WNMEA_ERROR_WRONG_MESSAGE;
+        }
+
+        // Compute checksum
+        mChecksum ^= c;
+
+        // Return without errors...
+        return WNMEA_ERROR_MESSAGE_PARSING;
         break;
 
     case WNMEA_PARSESTATE_DATA:
 
+        // Check the stop char...
+        if (c == WNMEA_CHAR_STOP)
+        {
+            // Jump to the next state...
+            mCurrentMessagePoistion = 0;
+            mState = WNMEA_PARSESTATE_CHECKSUM;
+
+            // Return without errors...
+            return WNMEA_ERROR_MESSAGE_PARSING;
+        }
+        else
+        {
+            // The message is not good! Clear all...
+            if (mCurrentMessagePoistion >= WNMEA_MESSAGE_BODY_LENGTH)
+            {
+                reset();
+                return WNMEA_ERROR_WRONG_MESSAGE;
+            }
+
+            mCurrentMessage.body[mCurrentMessagePoistion++] = c;
+            // Compute checksum
+            mChecksum ^= c;
+
+            // Return without errors...
+            return WNMEA_ERROR_MESSAGE_PARSING;
+        }
+
         break;
 
     case WNMEA_PARSESTATE_CHECKSUM:
-
+        mCurrentMessage.checksum[mCurrentMessagePoistion++] = c;
+        if (mCurrentMessagePoistion == WNMEA_MESSAGE_CRC_LENGTH)
+        {
+            if ((uint8_t) strtol(mCurrentMessage.checksum, null, 16) == mChecksum)
+            {
+                // Nice! The message is valid!
+                return WNMEA_ERROR_MESSAGE_READY;
+            }
+            reset();
+            return WNMEA_ERROR_WRONG_MESSAGE;
+        }
         break;
 
-    case WNMEA_PARSESTATE_EOP:
-
+    default:
+        reset();
+        return WNMEA_ERROR_WRONG_MESSAGE;
         break;
     }
 
     return WNMEA_ERROR_SUCCESS;
 }
 
-static void reset (void)
+static WNMEA_Error_t parse (void)
 {
-    mState = WNMEA_PARSESTATE_SOP;
+
+    return WNMEA_ERROR_SUCCESS;
 }
 
 void callbackRx (struct _Uart_Device* dev, void* obj)
@@ -155,7 +257,7 @@ void WNMEA_ckeck (void)
 
         if (err == WNMEA_ERROR_MESSAGE_READY)
         {
-
+            parse();
         }
     }
 }
