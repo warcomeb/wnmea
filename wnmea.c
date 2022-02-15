@@ -40,12 +40,14 @@
 #define WNMEA_CONSTELLATION_STRING_NAVIC         "GI" // India
 #define WNMEA_CONSTELLATION_STRING_MULTIPLE      "GN"
 
-#define WNMEA_MESSAGE_TYPE_GGA                   "GGA"
-#define WNMEA_MESSAGE_TYPE_GSA                   "GSA"
-#define WNMEA_MESSAGE_TYPE_GSV                   "GSV"
-#define WNMEA_MESSAGE_TYPE_RMC                   "RMC"
-#define WNMEA_MESSAGE_TYPE_VTG                   "VTG"
-#define WNMEA_MESSAGE_TYPE_PMTK                  "PMTK"
+#define WNMEA_MESSAGE_TYPE_STRING_GGA            "GGA"
+#define WNMEA_MESSAGE_TYPE_STRING_GSA            "GSA"
+#define WNMEA_MESSAGE_TYPE_STRING_GSV            "GSV"
+#define WNMEA_MESSAGE_TYPE_STRING_GLL            "GLL"
+#define WNMEA_MESSAGE_TYPE_STRING_RMC            "RMC"
+#define WNMEA_MESSAGE_TYPE_STRING_VTG            "VTG"
+#define WNMEA_MESSAGE_TYPE_STRING_ZDA            "ZDA"
+#define WNMEA_MESSAGE_TYPE_STRING_PMTK           "PMTK"
 
 #define WNMEA_CHAR_START                         '$'
 #define WNMEA_CHAR_STOP                          '*'
@@ -217,6 +219,7 @@ static WNMEA_Error_t process (char c)
     return WNMEA_ERROR_SUCCESS;
 }
 
+
 static WNMEA_Constellation_t getConstellation (void)
 {
     if (strncmp(mMessage.type,WNMEA_CONSTELLATION_STRING_GPS,2) != 0)
@@ -247,6 +250,41 @@ static WNMEA_Constellation_t getConstellation (void)
     return WNMEA_CONSTELLATION_UNKNOW;
 }
 
+static WNMEA_MessageType_t getType (void)
+{
+    if (strncmp(&mMessage.type[2],WNMEA_MESSAGE_TYPE_STRING_RMC,3) != 0)
+    {
+        return WNMEA_MESSAGETYPE_RMC;
+    }
+    else if (strncmp(&mMessage.type[2],WNMEA_MESSAGE_TYPE_STRING_GGA,3) != 0)
+    {
+        return WNMEA_MESSAGETYPE_GGA;
+    }
+    else if (strncmp(&mMessage.type[2],WNMEA_MESSAGE_TYPE_STRING_GLL,3) != 0)
+    {
+        return WNMEA_MESSAGETYPE_GLL;
+    }
+    else if (strncmp(&mMessage.type[2],WNMEA_MESSAGE_TYPE_STRING_GSV,3) != 0)
+    {
+        return WNMEA_MESSAGETYPE_GSV;
+    }
+    else if (strncmp(&mMessage.type[2],WNMEA_MESSAGE_TYPE_STRING_GSA,3) != 0)
+    {
+        return WNMEA_MESSAGETYPE_GSA;
+    }
+    else if (strncmp(&mMessage.type[2],WNMEA_MESSAGE_TYPE_STRING_ZDA,3) != 0)
+    {
+        return WNMEA_MESSAGETYPE_ZDA;
+    }
+
+    return WNMEA_MESSAGETYPE_UNKNOW;
+}
+
+static WNMEA_Error_t parseRMC (void)
+{
+
+}
+
 static WNMEA_Error_t parse (void)
 {
     // Reset parsed message variable
@@ -254,7 +292,7 @@ static WNMEA_Error_t parse (void)
 
     // Check the message types
     // It is a PMTK packet, useful for configuration...
-    if (strncmp(WNMEA_MESSAGE_TYPE_PMTK,mMessage.type,strlen(WNMEA_MESSAGE_TYPE_PMTK) == 0))
+    if (strncmp(WNMEA_MESSAGE_TYPE_STRING_PMTK,mMessage.type,strlen(WNMEA_MESSAGE_TYPE_STRING_PMTK) == 0))
     {
         // TODO:  manage this message!
     }
@@ -276,6 +314,26 @@ static WNMEA_Error_t parse (void)
         mMessageParsed.constellation = getConstellation();
 
         // Check the message type, and parse message.
+        mMessageParsed.type = getType();
+
+        switch(mMessageParsed.type)
+        {
+        case WNMEA_MESSAGETYPE_RMC:
+            parseRMC();
+            break;
+        case WNMEA_MESSAGETYPE_GGA:
+            break;
+        case WNMEA_MESSAGETYPE_GLL:
+            break;
+        case WNMEA_MESSAGETYPE_GSV:
+            break;
+        case WNMEA_MESSAGETYPE_GSA:
+            break;
+        case WNMEA_MESSAGETYPE_ZDA:
+            break;
+        default:
+            break;
+        }
 
     }
     return WNMEA_ERROR_SUCCESS;

@@ -72,6 +72,11 @@ static const Utility_Version_t WNMEA_FIRMWARE_VERSION =
 #endif
 
 /*!
+ *
+ */
+typedef float WNMEA_Coordinate_t;
+
+/*!
  * List of all possible errors.
  */
 typedef enum _WNMEA_Errors_t
@@ -88,6 +93,9 @@ typedef enum _WNMEA_Errors_t
 #define WNMEA_BUFFER_DIMENSION                   0x01FFu
 #endif
 
+/*!
+ *
+ */
 typedef enum _WNMEA_Constellation_t
 {
     WNMEA_CONSTELLATION_GPS,
@@ -101,6 +109,50 @@ typedef enum _WNMEA_Constellation_t
 
 } WNMEA_Constellation_t;
 
+/*!
+ *
+ */
+typedef enum _WNMEA_MessageType_t
+{
+    WNMEA_MESSAGETYPE_RMC,
+    WNMEA_MESSAGETYPE_GGA,
+    WNMEA_MESSAGETYPE_GLL,
+    WNMEA_MESSAGETYPE_GSV,
+    WNMEA_MESSAGETYPE_GSA,
+    WNMEA_MESSAGETYPE_ZDA,
+
+    WNMEA_MESSAGETYPE_UNKNOW,
+
+} WNMEA_MessageType_t;
+
+typedef enum _WNMEA_LatitudeSide_t
+{
+    WNMEA_LATITUDESIDE_NORTH,
+    WNMEA_LATITUDESIDE_SOUTH,
+} WNMEA_LatitudeSide_t;
+
+typedef enum _WNMEA_LongitudeSide_t
+{
+    WNMEA_LONGITUDESIDE_EAST,
+    WNMEA_LONGITUDESIDE_WEST,
+} WNMEA_LongitudeSide_t;
+
+typedef enum _WNMEA_PositionType_t
+{
+    WNMEA_POSITIONTYPE_VALID,
+    WNMEA_POSITIONTYPE_INVALID,
+} WNMEA_PositionType_t;
+
+typedef enum _WNMEA_FixQuality_t
+{
+    WNMEA_FIXQUALITY_INVALID,
+    WNMEA_FIXQUALITY_FIX,
+    WNMEA_FIXQUALITY_DIFFERENTIAL_FIX,
+} WNMEA_FixQuality_t;
+
+/*!
+ *
+ */
 typedef struct _WNMEA_Message_t
 {
     char type[WNMEA_MESSAGE_TYPE_LENGTH];
@@ -109,9 +161,60 @@ typedef struct _WNMEA_Message_t
 
 } WNMEA_Message_t;
 
+/*!
+ * RMC Sentences - Recommended minimum specific GPS/Transit data
+ */
+typedef struct _WNMEA_MessageRMC_t
+{
+    WNMEA_PositionType_t  status;          ///< Data status (V=navigation receiver warning)
+    Time_TimeType         time;            ///< UTC of position fix
+    Time_DateType         date;
+    WNMEA_Coordinate_t    longitude;       ///< Longitude of fix
+    WNMEA_LongitudeSide_t longitudeSide;
+    WNMEA_Coordinate_t    latitude;        ///< Latitude of fix
+    WNMEA_LatitudeSide_t  latitudeSide;
+    float                 speed;           ///< Speed over ground in knots
+} WNMEA_MessageRMC_t;
+
+/*!
+ * GGA Sentences - Global Positioning System Fix Data
+ */
+typedef struct _WNMEA_MessageGGA_t
+{
+    Time_TimeType         time;          ///< UTC of Position
+    WNMEA_Coordinate_t    latitude;
+    WNMEA_LatitudeSide_t  latitudeSide;  ///< Latitude of fix
+    WNMEA_Coordinate_t    longitude;
+    WNMEA_LongitudeSide_t longitudeSide; ///< Longitude of fix
+    WNMEA_FixQuality_t    quality;       ///< GPS quality indicator
+    uint8_t               satellites;    ///< Number of satellites in use (not in view!)
+} WNMEA_MessageGGA_t;
+
+/*!
+ * ZDA Sentences - Date & Time
+ */
+typedef struct _WNMEA_MessageZDA_t
+{
+    Time_TimeType time;       ///< UTC of position fix
+    Time_DateType date;       ///< UT date of position fix
+    int8_t        hourDiff;   ///< Local zone description, 00 to +/- 13 hours
+    int8_t        minuteDiff; ///< Local zone minutes description (same sign as hours)
+} WNMEA_MessageZDA_t;
+
+/*!
+ *
+ */
 typedef struct _WNMEA_MessageParsed_t
 {
     WNMEA_Constellation_t constellation;
+    WNMEA_MessageType_t   type;
+
+    union
+    {
+        WNMEA_MessageRMC_t rmc;
+        WNMEA_MessageGGA_t gga;
+        WNMEA_MessageZDA_t zda;
+    } message;
 
 } WNMEA_MessageParsed_t, *WNMEA_MessageParsedHandle_t;
 
