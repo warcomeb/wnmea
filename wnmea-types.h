@@ -125,17 +125,18 @@ typedef enum _WNMEA_MessageType_t
 
 } WNMEA_MessageType_t;
 
-typedef enum _WNMEA_LatitudeSide_t
+/*!
+ *
+ */
+typedef enum _WNMEA_CardinalSide_t
 {
-    WNMEA_LATITUDESIDE_NORTH,
-    WNMEA_LATITUDESIDE_SOUTH,
-} WNMEA_LatitudeSide_t;
+    WNMEA_CARDINALSIDE_NORTH,
+    WNMEA_CARDINALSIDE_SOUTH,
+    WNMEA_CARDINALSIDE_EAST,
+    WNMEA_CARDINALSIDE_WEST,
 
-typedef enum _WNMEA_LongitudeSide_t
-{
-    WNMEA_LONGITUDESIDE_EAST,
-    WNMEA_LONGITUDESIDE_WEST,
-} WNMEA_LongitudeSide_t;
+    WNMEA_CARDINALSIDE_UNKNOW,
+} WNMEA_CardinalSide_t;
 
 typedef enum _WNMEA_PositionType_t
 {
@@ -170,9 +171,9 @@ typedef struct _WNMEA_MessageRMC_t
     Time_TimeType         time;            ///< UTC of position fix
     Time_DateType         date;
     WNMEA_Coordinate_t    longitude;       ///< Longitude of fix
-    WNMEA_LongitudeSide_t longitudeSide;
+    WNMEA_CardinalSide_t  longitudeSide;
     WNMEA_Coordinate_t    latitude;        ///< Latitude of fix
-    WNMEA_LatitudeSide_t  latitudeSide;
+    WNMEA_CardinalSide_t  latitudeSide;
     float                 speed;           ///< Speed over ground in knots
 } WNMEA_MessageRMC_t;
 
@@ -182,10 +183,10 @@ typedef struct _WNMEA_MessageRMC_t
 typedef struct _WNMEA_MessageGGA_t
 {
     Time_TimeType         time;          ///< UTC of Position
-    WNMEA_Coordinate_t    latitude;
-    WNMEA_LatitudeSide_t  latitudeSide;  ///< Latitude of fix
-    WNMEA_Coordinate_t    longitude;
-    WNMEA_LongitudeSide_t longitudeSide; ///< Longitude of fix
+    WNMEA_Coordinate_t    latitude;      ///< Latitude of fix
+    WNMEA_CardinalSide_t  latitudeSide;
+    WNMEA_Coordinate_t    longitude;     ///< Longitude of fix
+    WNMEA_CardinalSide_t  longitudeSide;
     WNMEA_FixQuality_t    quality;       ///< GPS quality indicator
     uint8_t               satellites;    ///< Number of satellites in use (not in view!)
 } WNMEA_MessageGGA_t;
