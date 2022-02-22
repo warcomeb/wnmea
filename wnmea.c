@@ -71,6 +71,11 @@ typedef enum _WNMEA_ParseState_t
 static Uart_DeviceHandle mDevice = {0};
 
 /*!
+ *
+ */
+static WNMEA_MessageCallback_t mCallback = {0};
+
+/*!
  * The buffer for the incoming command.
  */
 static char mBuffer[WNMEA_BUFFER_DIMENSION+1] = {0};
@@ -253,27 +258,27 @@ static WNMEA_Constellation_t getConstellation (void)
 
 static WNMEA_MessageType_t getType (void)
 {
-    if (strncmp(&mMessage.type[2],WNMEA_MESSAGE_TYPE_STRING_RMC,3) != 0)
+    if (strncmp(&mMessage.type[2],WNMEA_MESSAGE_TYPE_STRING_RMC,3) == 0)
     {
         return WNMEA_MESSAGETYPE_RMC;
     }
-    else if (strncmp(&mMessage.type[2],WNMEA_MESSAGE_TYPE_STRING_GGA,3) != 0)
+    else if (strncmp(&mMessage.type[2],WNMEA_MESSAGE_TYPE_STRING_GGA,3) == 0)
     {
         return WNMEA_MESSAGETYPE_GGA;
     }
-    else if (strncmp(&mMessage.type[2],WNMEA_MESSAGE_TYPE_STRING_GLL,3) != 0)
+    else if (strncmp(&mMessage.type[2],WNMEA_MESSAGE_TYPE_STRING_GLL,3) == 0)
     {
         return WNMEA_MESSAGETYPE_GLL;
     }
-    else if (strncmp(&mMessage.type[2],WNMEA_MESSAGE_TYPE_STRING_GSV,3) != 0)
+    else if (strncmp(&mMessage.type[2],WNMEA_MESSAGE_TYPE_STRING_GSV,3) == 0)
     {
         return WNMEA_MESSAGETYPE_GSV;
     }
-    else if (strncmp(&mMessage.type[2],WNMEA_MESSAGE_TYPE_STRING_GSA,3) != 0)
+    else if (strncmp(&mMessage.type[2],WNMEA_MESSAGE_TYPE_STRING_GSA,3) == 0)
     {
         return WNMEA_MESSAGETYPE_GSA;
     }
-    else if (strncmp(&mMessage.type[2],WNMEA_MESSAGE_TYPE_STRING_ZDA,3) != 0)
+    else if (strncmp(&mMessage.type[2],WNMEA_MESSAGE_TYPE_STRING_ZDA,3) == 0)
     {
         return WNMEA_MESSAGETYPE_ZDA;
     }
@@ -351,11 +356,95 @@ static WNMEA_Error_t parseCardinal (char c, WNMEA_CardinalSide_t* result)
 }
 
 /*!
+ * The date message are in the format ddmmyy where
+ * - dd is day
+ * - mm is month
+ * - yy is year
+ *
+ * \param[in] message The message that we need to convert.
+ * \param[out]result The result of the conversion.
+ * \return Return the status of the operation by an element of \ref WNMEA_Error_t
+ */
+static WNMEA_Error_t parseDate (const char* message, Time_DateType* result)
+{
+    char tmp[10] = {0};
+    // Copy the message into temporary buffer
+    memcpy(tmp,message,6);
+
+    // Convert year (it is only two char)
+    result->year  = atoi(&tmp[4]) + 2000;
+    // Add end-string char
+    tmp[4] = '\0';
+
+    // Convert month, the result must be between 1 and 12.
+    result->month = atoi(&tmp[2]);
+    // Add end-string char
+    tmp[2] = '\0';
+
+    // Convert day
+    result->day = atoi(&tmp[0]);
+
+    return WNMEA_ERROR_SUCCESS;
+}
+
+/*!
+ * The time message are in the format hhmmss.dd where
+ * - hh is hours
+ * - mm is minutes
+ * - ss is seconds
+ * - ddd is the decimal part of seconds
+ *
+ * \param[in] message The message that we need to convert.
+ * \param[out]result The result of the conversion.
+ * \return Return the status of the operation by an element of \ref WNMEA_Error_t
+ */
+static WNMEA_Error_t parseTime (const char* message, Time_TimeType* result)
+{
+    char tmp[12] = {0};
+    // Copy the message into temporary buffer
+    memcpy(tmp,message,10);
+
+    // Clear dot, and replace with end-string character.
+    tmp[6] = '\0';
+
+    // Convert seconds
+    result->seconds  = atoi(&tmp[4]);
+    // Add end-string char
+    tmp[4] = '\0';
+
+    // Convert minute
+    result->minutes = atoi(&tmp[2]);
+    // Add end-string char
+    tmp[2] = '\0';
+
+    // Convert hour
+    result->hours = atoi(&tmp[0]);
+
+    return WNMEA_ERROR_SUCCESS;
+}
+
+typedef enum _WNMEA_RMCParseState_t
+{
+    WNMEA_RMCPARSESTATE_UTC = 0,
+    WNMEA_RMCPARSESTATE_STATUS,
+    WNMEA_RMCPARSESTATE_LATITUDE,
+    WNMEA_RMCPARSESTATE_LATITUDE_SIDE,
+    WNMEA_RMCPARSESTATE_LONGITUDE,
+    WNMEA_RMCPARSESTATE_LONGITUDE_SIDE,
+    WNMEA_RMCPARSESTATE_SPEED,
+    WNMEA_RMCPARSESTATE_TRACK_MODE,
+    WNMEA_RMCPARSESTATE_DATE,
+    WNMEA_RMCPARSESTATE_MAGNETIC_VARIATION,
+    WNMEA_RMCPARSESTATE_MAGNETIC_SIDE,
+
+} WNMEA_RMCParseState_t;
+
+/*!
  * This function parse the NMEA string RMC.
  * The parsed value will be saved into internal variable.
  * The format of RMC is the following:
  * \code{.unparsed}
- * $GPRMC,hhmmss.ss,A,llll.ll,a,yyyyy.yy,a,x.x,x.x,ddmmyy,x.x,a*hh
+ * $GPRMC,hhmmss.ddd,A,llll.ll,a,yyyyy.yy,a,x.x,x.x,ddmmyy,x.x,a*hh
  * 1    = UTC of position fix
  * 2    = Data status (V=navigation receiver warning)
  * 3    = Latitude of fix
@@ -379,10 +468,107 @@ static WNMEA_Error_t parseRMC (void)
     char* cursor = 0;
 
     char tmp[WNMEA_MESSAGE_BODY_LENGTH] = {0};
+    char tok[15] = {0};
+    cursor = tok;
+    WNMEA_RMCParseState_t state = WNMEA_RMCPARSESTATE_UTC;
+
     strcpy(tmp,mMessage.body);
 
+    for (uint8_t i = 0; i < strlen(tmp); ++i)
+    {
+        if (tmp[i] != WNMEA_CHAR_SEPARATOR)
+        {
+            *cursor = tmp[i];
+            cursor++;
+        }
+        else
+        {
+            // Check the field only in case the length was > 0
+            if (strlen(tok) > 0)
+            {
+                switch (state)
+                {
+                case WNMEA_RMCPARSESTATE_UTC:
+                    // 1. UTC of position fix
+                    parseTime(cursor,&mMessageParsed.message.rmc.time);
+                    break;
+                case WNMEA_RMCPARSESTATE_STATUS:
+                    // 2. Data status (V=navigation receiver warning)
+                    if (strlen(tok) != 1)
+                    {
+                        return WNMEA_ERROR_WRONG_MESSAGE;
+                    }
+                    // Check the value
+                    if (tok[0] == 'V')
+                    {
+                        mMessageParsed.message.rmc.status = WNMEA_POSITIONTYPE_INVALID;
+                    }
+                    else
+                    {
+                        mMessageParsed.message.rmc.status = WNMEA_POSITIONTYPE_VALID;
+                    }
+                    break;
+                case WNMEA_RMCPARSESTATE_LATITUDE:
+                    // 3. Latitude of fix
+                    if (parseCoordinate(tok,&mMessageParsed.message.rmc.latitude) != WNMEA_ERROR_SUCCESS)
+                    {
+                        return WNMEA_ERROR_WRONG_MESSAGE;
+                    }
+                    break;
+                case WNMEA_RMCPARSESTATE_LATITUDE_SIDE:
+                    // 4. N or S
+                    if ((strlen(tok) != 1) || (parseCardinal(tok[0],&mMessageParsed.message.rmc.latitudeSide) != WNMEA_ERROR_SUCCESS))
+                    {
+                        return WNMEA_ERROR_WRONG_MESSAGE;
+                    }
+                    break;
+                case WNMEA_RMCPARSESTATE_LONGITUDE:
+                    // 5. Longitude of fix
+                    if (parseCoordinate(tok,&mMessageParsed.message.rmc.longitude) != WNMEA_ERROR_SUCCESS)
+                    {
+                        return WNMEA_ERROR_WRONG_MESSAGE;
+                    }
+                    break;
+                case WNMEA_RMCPARSESTATE_LONGITUDE_SIDE:
+                    // 6. E or W
+                    if ((strlen(tok) != 1) || (parseCardinal(tok[0],&mMessageParsed.message.rmc.longitudeSide) != WNMEA_ERROR_SUCCESS))
+                    {
+                        return WNMEA_ERROR_WRONG_MESSAGE;
+                    }
+                    break;
+                case WNMEA_RMCPARSESTATE_SPEED:
+                    // 7. Speed over ground in knots
+                    mMessageParsed.message.rmc.speed = atof(cursor);
+                    break;
+                case WNMEA_RMCPARSESTATE_TRACK_MODE:
+                    // 8. Track made good in degrees True
+                    // FIXME: not implemented!
+                    break;
+                case WNMEA_RMCPARSESTATE_DATE:
+                    // 9. UT date
+                    parseDate(tok,&mMessageParsed.message.rmc.date);
+                    break;
+                case WNMEA_RMCPARSESTATE_MAGNETIC_VARIATION:
+                    // 10. Magnetic variation degrees (Easterly var. subtracts from true course)
+                    // FIXME: not implemented!
+                    break;
+                case WNMEA_RMCPARSESTATE_MAGNETIC_SIDE:
+                    // 11. E or W
+                    // FIXME: not implemented!
+                    break;
+                }
+            }
+
+            state++;
+            cursor = tok;
+            memset(tok,0,sizeof(tok));
+        }
+    }
+
+#if 0
     cursor = strtok(tmp,",");
     // 1. UTC of position fix
+    parseTime(cursor,&mMessageParsed.message.rmc.time);
 
     cursor = strtok(null,",");
     // 2. Data status (V=navigation receiver warning)
@@ -438,6 +624,7 @@ static WNMEA_Error_t parseRMC (void)
 
     cursor = strtok(null,",");
     // 9. UT date
+    parseDate(cursor,&mMessageParsed.message.rmc.date);
 
     cursor = strtok(null,",");
     // 10. Magnetic variation degrees (Easterly var. subtracts from true course)
@@ -447,6 +634,8 @@ static WNMEA_Error_t parseRMC (void)
     // 11. E or W
     // FIXME: not implemented!
 
+#endif
+
     return WNMEA_ERROR_SUCCESS;
 }
 
@@ -455,7 +644,7 @@ static WNMEA_Error_t parseRMC (void)
  * The parsed value will be saved into internal variable.
  * The format of GGA is the following:
  * \code{.unparsed}
- * $GPGGA,hhmmss.ss,llll.ll,a,yyyyy.yy,a,x,xx,x.x,x.x,M,x.x,M,x.x,xxxx*hh
+ * $GPGGA,hhmmss.ddd,llll.ll,a,yyyyy.yy,a,x,xx,x.x,x.x,M,x.x,M,x.x,xxxx*hh
  * 1    = UTC of Position
  * 2    = Latitude
  * 3    = N or S
@@ -487,6 +676,7 @@ static WNMEA_Error_t parseGGA (void)
 
     cursor = strtok(tmp,",");
     // 1. UTC of position fix
+    parseTime(cursor,&mMessageParsed.message.gga.time);
 
     cursor = strtok(null,",");
     // 2. Latitude of fix
@@ -522,8 +712,7 @@ static WNMEA_Error_t parseGGA (void)
     {
         return WNMEA_ERROR_WRONG_MESSAGE;
     }
-    // TODO
-
+    mMessageParsed.message.gga.quality = (WNMEA_FixQuality_t) (cursor[0] - '0');
 
     cursor = strtok(null,",");
     // 7. Number of satellites in use [not those in view]
@@ -593,13 +782,27 @@ static WNMEA_Error_t parse (void)
         // Check the message type, and parse message.
         mMessageParsed.type = getType();
 
+        // Callback management
+        bool callCallback = false;
+        WNMEA_pFunctionCallback cb = null;
+
         switch(mMessageParsed.type)
         {
         case WNMEA_MESSAGETYPE_RMC:
             ret = parseRMC();
+            if (mCallback.rmc != null)
+            {
+                callCallback = true;
+                cb = mCallback.rmc;
+            }
             break;
         case WNMEA_MESSAGETYPE_GGA:
             ret = parseGGA();
+            if (mCallback.gga != null)
+            {
+                callCallback = true;
+                cb = mCallback.gga;
+            }
             break;
         case WNMEA_MESSAGETYPE_GLL:
             break;
@@ -617,8 +820,12 @@ static WNMEA_Error_t parse (void)
         {
             return ret;
         }
-        // TODO
 
+        // Call the specific callback
+        if (callCallback == true)
+        {
+            cb(mMessageParsed,mMessageParsed.type);
+        }
     }
     return ret;
 }
@@ -633,7 +840,7 @@ void callbackRx (struct _Uart_Device* dev, void* obj)
     UtilityBuffer_push(&mBufferDescriptor,c);
 }
 
-void WNMEA_init (Uart_DeviceHandle dev)
+void WNMEA_init (Uart_DeviceHandle dev, WNMEA_MessageCallback_t cb)
 {
     if (dev == null)
     {
@@ -643,6 +850,9 @@ void WNMEA_init (Uart_DeviceHandle dev)
     // Save device handle
     mDevice = dev;
     Uart_addRxCallback(mDevice,callbackRx);
+
+    // Save callbacks
+    mCallback = cb;
 
     // Initialize buffer descriptor
     UtilityBuffer_init(&mBufferDescriptor,(uint8_t*)mBuffer,WNMEA_BUFFER_DIMENSION+1);

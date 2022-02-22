@@ -74,7 +74,7 @@ extern "C"
  *
  * \param[in] dev: The peripheral device handle to use.
  */
-void WNMEA_init (Uart_DeviceHandle dev);
+void WNMEA_init (Uart_DeviceHandle dev, WNMEA_MessageCallback_t cb);
 
 /*!
  * \defgroup WNMEA_Command WNMEA Command APIs

@@ -146,9 +146,9 @@ typedef enum _WNMEA_PositionType_t
 
 typedef enum _WNMEA_FixQuality_t
 {
-    WNMEA_FIXQUALITY_INVALID,
-    WNMEA_FIXQUALITY_FIX,
-    WNMEA_FIXQUALITY_DIFFERENTIAL_FIX,
+    WNMEA_FIXQUALITY_INVALID          = 0,
+    WNMEA_FIXQUALITY_FIX              = 1,
+    WNMEA_FIXQUALITY_DIFFERENTIAL_FIX = 2,
 } WNMEA_FixQuality_t;
 
 /*!
@@ -218,6 +218,20 @@ typedef struct _WNMEA_MessageParsed_t
     } message;
 
 } WNMEA_MessageParsed_t, *WNMEA_MessageParsedHandle_t;
+
+/*!
+ *
+ */
+typedef void (*WNMEA_pFunctionCallback) (WNMEA_MessageParsed_t msg, WNMEA_MessageType_t type);
+
+/*!
+ *
+ */
+typedef struct _WNMEA_MessageCallback_t
+{
+    WNMEA_pFunctionCallback rmc;
+    WNMEA_pFunctionCallback gga;
+} WNMEA_MessageCallback_t;
 
 /*!
  * \}
