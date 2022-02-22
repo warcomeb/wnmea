@@ -423,6 +423,9 @@ static WNMEA_Error_t parseTime (const char* message, Time_TimeType* result)
     return WNMEA_ERROR_SUCCESS;
 }
 
+/*!
+ * RMC Message parsing state.
+ */
 typedef enum _WNMEA_RMCParseState_t
 {
     WNMEA_RMCPARSESTATE_UTC = 0,
@@ -436,7 +439,6 @@ typedef enum _WNMEA_RMCParseState_t
     WNMEA_RMCPARSESTATE_DATE,
     WNMEA_RMCPARSESTATE_MAGNETIC_VARIATION,
     WNMEA_RMCPARSESTATE_MAGNETIC_SIDE,
-
 } WNMEA_RMCParseState_t;
 
 /*!
@@ -473,6 +475,8 @@ static WNMEA_Error_t parseRMC (void)
     WNMEA_RMCParseState_t state = WNMEA_RMCPARSESTATE_UTC;
 
     strcpy(tmp,mMessage.body);
+    // Append a comma to the string to help the parsing procedure
+    strcat(tmp,",");
 
     for (uint8_t i = 0; i < strlen(tmp); ++i)
     {
@@ -490,7 +494,7 @@ static WNMEA_Error_t parseRMC (void)
                 {
                 case WNMEA_RMCPARSESTATE_UTC:
                     // 1. UTC of position fix
-                    parseTime(cursor,&mMessageParsed.message.rmc.time);
+                    parseTime(tok,&mMessageParsed.message.rmc.time);
                     break;
                 case WNMEA_RMCPARSESTATE_STATUS:
                     // 2. Data status (V=navigation receiver warning)
@@ -565,79 +569,29 @@ static WNMEA_Error_t parseRMC (void)
         }
     }
 
-#if 0
-    cursor = strtok(tmp,",");
-    // 1. UTC of position fix
-    parseTime(cursor,&mMessageParsed.message.rmc.time);
-
-    cursor = strtok(null,",");
-    // 2. Data status (V=navigation receiver warning)
-    if (strlen(cursor) != 1)
-    {
-        return WNMEA_ERROR_WRONG_MESSAGE;
-    }
-    // Check the value
-    if (cursor[0] == 'V')
-    {
-        mMessageParsed.message.rmc.status = WNMEA_POSITIONTYPE_INVALID;
-    }
-    else
-    {
-        mMessageParsed.message.rmc.status = WNMEA_POSITIONTYPE_VALID;
-    }
-
-    cursor = strtok(null,",");
-    // 3. Latitude of fix
-    if (parseCoordinate(cursor,&mMessageParsed.message.rmc.latitude) != WNMEA_ERROR_SUCCESS)
-    {
-        return WNMEA_ERROR_WRONG_MESSAGE;
-    }
-
-    cursor = strtok(null,",");
-    // 4. N or S
-    if ((strlen(cursor) != 1) || (parseCardinal(cursor[0],&mMessageParsed.message.rmc.latitudeSide) != WNMEA_ERROR_SUCCESS))
-    {
-        return WNMEA_ERROR_WRONG_MESSAGE;
-    }
-
-    cursor = strtok(null,",");
-    // 5. Longitude of fix
-    if (parseCoordinate(cursor,&mMessageParsed.message.rmc.longitude) != WNMEA_ERROR_SUCCESS)
-    {
-        return WNMEA_ERROR_WRONG_MESSAGE;
-    }
-
-    cursor = strtok(null,",");
-    // 6. E or W
-    if ((strlen(cursor) != 1) || (parseCardinal(cursor[0],&mMessageParsed.message.rmc.longitudeSide) != WNMEA_ERROR_SUCCESS))
-    {
-        return WNMEA_ERROR_WRONG_MESSAGE;
-    }
-
-    cursor = strtok(null,",");
-    // 7. Speed over ground in knots
-    mMessageParsed.message.rmc.speed = atof(cursor);
-
-    cursor = strtok(null,",");
-    // 8. Track made good in degrees True
-    // FIXME: not implemented!
-
-    cursor = strtok(null,",");
-    // 9. UT date
-    parseDate(cursor,&mMessageParsed.message.rmc.date);
-
-    cursor = strtok(null,",");
-    // 10. Magnetic variation degrees (Easterly var. subtracts from true course)
-    // FIXME: not implemented!
-
-    cursor = strtok(null,",");
-    // 11. E or W
-    // FIXME: not implemented!
-
-#endif
-
     return WNMEA_ERROR_SUCCESS;
 }
+
+/*!
+ * GGA Message parsing state.
+ */
+typedef enum _WNMEA_GGAParseState_t
+{
+    WNMEA_GGAPARSESTATE_UTC = 0,
+    WNMEA_GGAPARSESTATE_LATITUDE,
+    WNMEA_GGAPARSESTATE_LATITUDE_SIDE,
+    WNMEA_GGAPARSESTATE_LONGITUDE,
+    WNMEA_GGAPARSESTATE_LONGITUDE_SIDE,
+    WNMEA_GGAPARSESTATE_QUALITY,
+    WNMEA_GGAPARSESTATE_SATELLITES,
+    WNMEA_GGAPARSESTATE_DILUTION,
+    WNMEA_GGAPARSESTATE_ANTENNA_ALTITUDE,
+    WNMEA_GGAPARSESTATE_ANTENNA_UNIT,
+    WNMEA_GGAPARSESTATE_GEOIDAL_SEPARATION,
+    WNMEA_GGAPARSESTATE_GEOIDAL_UNIT,
+    WNMEA_GGAPARSESTATE_AGE,
+    WNMEA_GGAPARSESTATE_DIFF_REFERENCE,
+} WNMEA_GGAParseState_t;
 
 /*!
  * This function parse the NMEA string GGA.
@@ -672,79 +626,108 @@ static WNMEA_Error_t parseGGA (void)
     char* cursor = 0;
 
     char tmp[WNMEA_MESSAGE_BODY_LENGTH] = {0};
+    char tok[15] = {0};
+    cursor = tok;
+    WNMEA_GGAParseState_t state = WNMEA_GGAPARSESTATE_UTC;
+
     strcpy(tmp,mMessage.body);
+    // Append a comma to the string to help the parsing procedure
+    strcat(tmp,",");
 
-    cursor = strtok(tmp,",");
-    // 1. UTC of position fix
-    parseTime(cursor,&mMessageParsed.message.gga.time);
-
-    cursor = strtok(null,",");
-    // 2. Latitude of fix
-    if (parseCoordinate(cursor,&mMessageParsed.message.gga.latitude) != WNMEA_ERROR_SUCCESS)
+    for (uint8_t i = 0; i < strlen(tmp); ++i)
     {
-        return WNMEA_ERROR_WRONG_MESSAGE;
+        if (tmp[i] != WNMEA_CHAR_SEPARATOR)
+        {
+            *cursor = tmp[i];
+            cursor++;
+        }
+        else
+        {
+            // Check the field only in case the length was > 0
+            if (strlen(tok) > 0)
+            {
+                switch (state)
+                {
+                case WNMEA_GGAPARSESTATE_UTC:
+                    // 1. UTC of position fix
+                    parseTime(tok,&mMessageParsed.message.gga.time);
+                    break;
+                case WNMEA_GGAPARSESTATE_LATITUDE:
+                    // 2. Latitude of fix
+                    if (parseCoordinate(tok,&mMessageParsed.message.gga.latitude) != WNMEA_ERROR_SUCCESS)
+                    {
+                        return WNMEA_ERROR_WRONG_MESSAGE;
+                    }
+                    break;
+                case WNMEA_GGAPARSESTATE_LATITUDE_SIDE:
+                    // 3. N or S
+                    if ((strlen(tok) != 1) || (parseCardinal(tok[0],&mMessageParsed.message.gga.latitudeSide) != WNMEA_ERROR_SUCCESS))
+                    {
+                        return WNMEA_ERROR_WRONG_MESSAGE;
+                    }
+                    break;
+                case WNMEA_GGAPARSESTATE_LONGITUDE:
+                    // 4. Longitude of fix
+                    if (parseCoordinate(tok,&mMessageParsed.message.gga.longitude) != WNMEA_ERROR_SUCCESS)
+                    {
+                        return WNMEA_ERROR_WRONG_MESSAGE;
+                    }
+                    break;
+                case WNMEA_GGAPARSESTATE_LONGITUDE_SIDE:
+                    // 5. E or W
+                    if ((strlen(tok) != 1) || (parseCardinal(tok[0],&mMessageParsed.message.gga.longitudeSide) != WNMEA_ERROR_SUCCESS))
+                    {
+                        return WNMEA_ERROR_WRONG_MESSAGE;
+                    }
+                    break;
+                case WNMEA_GGAPARSESTATE_QUALITY:
+                    // 6. GPS quality indicator (0=invalid; 1=GPS fix; 2=Diff. GPS fix)
+                    if (strlen(tok) != 1)
+                    {
+                        return WNMEA_ERROR_WRONG_MESSAGE;
+                    }
+                    mMessageParsed.message.gga.quality = (WNMEA_FixQuality_t) (tok[0] - '0');
+                    break;
+                case WNMEA_GGAPARSESTATE_SATELLITES:
+                    // 7. Number of satellites in use [not those in view]
+                    mMessageParsed.message.gga.satellites = atoi(tok);
+                    break;
+                case WNMEA_GGAPARSESTATE_DILUTION:
+                    // 8. Horizontal dilution of position
+                    // FIXME: not implemented!
+                    break;
+                case WNMEA_GGAPARSESTATE_ANTENNA_ALTITUDE:
+                    // 9. Antenna altitude above/below mean sea level (geoid)
+                    // FIXME: not implemented!
+                    break;
+                case WNMEA_GGAPARSESTATE_ANTENNA_UNIT:
+                    // 10. Meters  (Antenna height unit)
+                    // FIXME: not implemented!
+                    break;
+                case WNMEA_GGAPARSESTATE_GEOIDAL_SEPARATION:
+                    // 11. Geoidal separation
+                    // FIXME: not implemented!
+                    break;
+                case WNMEA_GGAPARSESTATE_GEOIDAL_UNIT:
+                    // 12. Meters  (Units of geoidal separation)
+                    // FIXME: not implemented!
+                    break;
+                case WNMEA_GGAPARSESTATE_AGE:
+                    // 13. Age in seconds since last update from diff. reference station
+                    // FIXME: not implemented!
+                    break;
+                case WNMEA_GGAPARSESTATE_DIFF_REFERENCE:
+                    // 14. Diff. reference station ID#
+                    // FIXME: not implemented!
+                    break;
+                }
+            }
+
+            state++;
+            cursor = tok;
+            memset(tok,0,sizeof(tok));
+        }
     }
-
-    cursor = strtok(null,",");
-    // 3. N or S
-    if ((strlen(cursor) != 1) || (parseCardinal(cursor[0],&mMessageParsed.message.gga.latitudeSide) != WNMEA_ERROR_SUCCESS))
-    {
-        return WNMEA_ERROR_WRONG_MESSAGE;
-    }
-
-    cursor = strtok(null,",");
-    // 4. Longitude of fix
-    if (parseCoordinate(cursor,&mMessageParsed.message.gga.longitude) != WNMEA_ERROR_SUCCESS)
-    {
-        return WNMEA_ERROR_WRONG_MESSAGE;
-    }
-
-    cursor = strtok(null,",");
-    // 5. E or W
-    if ((strlen(cursor) != 1) || (parseCardinal(cursor[0],&mMessageParsed.message.gga.longitudeSide) != WNMEA_ERROR_SUCCESS))
-    {
-        return WNMEA_ERROR_WRONG_MESSAGE;
-    }
-
-    cursor = strtok(null,",");
-    // 6. GPS quality indicator (0=invalid; 1=GPS fix; 2=Diff. GPS fix)
-    if (strlen(cursor) != 1)
-    {
-        return WNMEA_ERROR_WRONG_MESSAGE;
-    }
-    mMessageParsed.message.gga.quality = (WNMEA_FixQuality_t) (cursor[0] - '0');
-
-    cursor = strtok(null,",");
-    // 7. Number of satellites in use [not those in view]
-    mMessageParsed.message.gga.satellites = atoi(cursor);
-
-    cursor = strtok(null,",");
-    // 8. Horizontal dilution of position
-    // FIXME: not implemented!
-
-    cursor = strtok(null,",");
-    // 9. Antenna altitude above/below mean sea level (geoid)
-    // FIXME: not implemented!
-
-    cursor = strtok(null,",");
-    // 10. Meters  (Antenna height unit)
-    // FIXME: not implemented!
-
-    cursor = strtok(null,",");
-    // 11. Geoidal separation
-    // FIXME: not implemented!
-
-    cursor = strtok(null,",");
-    // 12. Meters  (Units of geoidal separation)
-    // FIXME: not implemented!
-
-    cursor = strtok(null,",");
-    // 13. Age in seconds since last update from diff. reference station
-    // FIXME: not implemented!
-
-    cursor = strtok(null,",");
-    // 14. Diff. reference station ID#
-    // FIXME: not implemented!
 
     return WNMEA_ERROR_SUCCESS;
 }
