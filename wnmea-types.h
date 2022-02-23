@@ -138,12 +138,20 @@ typedef enum _WNMEA_CardinalSide_t
     WNMEA_CARDINALSIDE_UNKNOW,
 } WNMEA_CardinalSide_t;
 
+/*!
+ * Position fix validity enumeration.
+ * It is used into RMC packet.
+ */
 typedef enum _WNMEA_PositionType_t
 {
     WNMEA_POSITIONTYPE_VALID,
     WNMEA_POSITIONTYPE_INVALID,
 } WNMEA_PositionType_t;
 
+/*!
+ * Fix quality enumeration.
+ * It is used into GGA packet.
+ */
 typedef enum _WNMEA_FixQuality_t
 {
     WNMEA_FIXQUALITY_INVALID          = 0,
@@ -152,7 +160,7 @@ typedef enum _WNMEA_FixQuality_t
 } WNMEA_FixQuality_t;
 
 /*!
- *
+ * Generic structure of NMEA 0183 packet.
  */
 typedef struct _WNMEA_Message_t
 {
@@ -203,7 +211,7 @@ typedef struct _WNMEA_MessageZDA_t
 } WNMEA_MessageZDA_t;
 
 /*!
- *
+ * Parsed message informations into one type.
  */
 typedef struct _WNMEA_MessageParsed_t
 {
@@ -220,12 +228,13 @@ typedef struct _WNMEA_MessageParsed_t
 } WNMEA_MessageParsed_t, *WNMEA_MessageParsedHandle_t;
 
 /*!
- *
+ * Callback function type used to manage a valid parsed packet.
  */
 typedef void (*WNMEA_pFunctionCallback) (WNMEA_MessageParsed_t msg, WNMEA_MessageType_t type);
 
 /*!
- *
+ * Set of all callback that can be used when the device
+ * receive and parse a valid message.
  */
 typedef struct _WNMEA_MessageCallback_t
 {
