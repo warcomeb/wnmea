@@ -140,7 +140,6 @@ static WNMEA_Error_t process (char c)
         break;
 
     case WNMEA_PARSESTATE_TYPE:
-
         // Check the first separator...
         if (c == WNMEA_CHAR_SEPARATOR)
         {
@@ -172,7 +171,6 @@ static WNMEA_Error_t process (char c)
         break;
 
     case WNMEA_PARSESTATE_DATA:
-
         // Check the stop char...
         if (c == WNMEA_CHAR_STOP)
         {
@@ -211,6 +209,11 @@ static WNMEA_Error_t process (char c)
                 // Nice! The message is valid!
                 return WNMEA_ERROR_MESSAGE_READY;
             }
+            reset();
+            return WNMEA_ERROR_WRONG_MESSAGE;
+        }
+        else if (mMessagePoistion > WNMEA_MESSAGE_CRC_LENGTH)
+        {
             reset();
             return WNMEA_ERROR_WRONG_MESSAGE;
         }
@@ -855,6 +858,7 @@ void WNMEA_ckeck (void)
         if (err == WNMEA_ERROR_MESSAGE_READY)
         {
             parse();
+            reset();
         }
     }
 }

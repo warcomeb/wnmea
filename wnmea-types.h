@@ -90,7 +90,7 @@ typedef enum _WNMEA_Errors_t
 } WNMEA_Error_t;
 
 #if !defined (WNMEA_BUFFER_DIMENSION)
-#define WNMEA_BUFFER_DIMENSION                   0x01FFu
+#define WNMEA_BUFFER_DIMENSION                   0x03FFu
 #endif
 
 /*!
