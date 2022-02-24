@@ -298,6 +298,10 @@ static WNMEA_MessageType_t getType (void)
  */
 static WNMEA_Error_t parseCoordinate (const char* message, WNMEA_Coordinate_t* result)
 {
+    char tmp[15] = {0};
+    // Copy the message into temporary buffer
+    strcpy(tmp,message);
+
     char* cursor;
     float degrees = 0.0f, minutes = 0.0f;
 
@@ -309,7 +313,7 @@ static WNMEA_Error_t parseCoordinate (const char* message, WNMEA_Coordinate_t* r
     }
 
     // Check decimal point
-    cursor = strchr(message,'.');
+    cursor = strchr(tmp,'.');
     // In case the decimal point is not present, return with error.
     if (cursor == null)
     {
@@ -321,10 +325,10 @@ static WNMEA_Error_t parseCoordinate (const char* message, WNMEA_Coordinate_t* r
     minutes = atof(cursor);
 
     // Close degree string with \0 at cursor position
-    cursor = '\0';
+    *cursor = '\0';
 
     // Compute degrees value
-    degrees = (float)atoi(message);
+    degrees = (float)atoi(tmp);
 
     // Compute result
     *result = (WNMEA_Coordinate_t)(degrees + (minutes / 60.0f));
