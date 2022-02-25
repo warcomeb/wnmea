@@ -58,7 +58,9 @@
 #define WNMEA_CHAR_END1                          '\r'
 #define WNMEA_CHAR_END2                          '\n'
 
-
+/*!
+ * Message parsing state.
+ */
 typedef enum _WNMEA_ParseState_t
 {
     WNMEA_PARSESTATE_SOP,
@@ -71,7 +73,7 @@ typedef enum _WNMEA_ParseState_t
 static Uart_DeviceHandle mDevice = {0};
 
 /*!
- *
+ * List of all manage callbacks.
  */
 static WNMEA_MessageCallback_t mCallback = {0};
 
@@ -739,6 +741,9 @@ static WNMEA_Error_t parseGGA (void)
     return WNMEA_ERROR_SUCCESS;
 }
 
+/*!
+ * This function parse a complete NMEA 0183 message.
+ */
 static WNMEA_Error_t parse (void)
 {
     WNMEA_Error_t ret = WNMEA_ERROR_SUCCESS;

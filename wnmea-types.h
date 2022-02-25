@@ -26,7 +26,7 @@
 
 /*!
  * \file  /wnmea-types.h
- * \brief
+ * \brief All public types of library.
  */
 
 #ifndef __WARCOMEB_WNMEA_TYPES_H
@@ -71,6 +71,11 @@ static const Utility_Version_t WNMEA_FIRMWARE_VERSION =
 #define WNMEA_MESSAGE_CRC_LENGTH                 2
 #endif
 
+#if !defined (WNMEA_BUFFER_DIMENSION)
+#define WNMEA_BUFFER_DIMENSION                   0x03FFu
+#endif
+
+
 /*!
  *
  */
@@ -89,12 +94,8 @@ typedef enum _WNMEA_Errors_t
 
 } WNMEA_Error_t;
 
-#if !defined (WNMEA_BUFFER_DIMENSION)
-#define WNMEA_BUFFER_DIMENSION                   0x03FFu
-#endif
-
 /*!
- *
+ * List of all constellation type.
  */
 typedef enum _WNMEA_Constellation_t
 {
@@ -110,7 +111,7 @@ typedef enum _WNMEA_Constellation_t
 } WNMEA_Constellation_t;
 
 /*!
- *
+ * List of all accepted NMEA 0183 message.
  */
 typedef enum _WNMEA_MessageType_t
 {
@@ -126,7 +127,7 @@ typedef enum _WNMEA_MessageType_t
 } WNMEA_MessageType_t;
 
 /*!
- *
+ * List of all cardinal side position.
  */
 typedef enum _WNMEA_CardinalSide_t
 {

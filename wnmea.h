@@ -40,7 +40,9 @@ extern "C"
 /*!
  * \mainpage WNMEA - Warcomeb NMEA 0183 Parsing Library
  *
- * This library is developed in order to ...
+ * This library is developed in order to parse NMEA0183 string produced by GPS sensor and it use
+ * libohiboard as low level driver framework.
+ * This library is an evolutions of \link https://github.com/warcomeb/gpsnmea-embedded \endlink.
  *
  * \section changelog ChangeLog
  *
@@ -56,6 +58,28 @@ extern "C"
  *
  * \section credits Credits
  * \li Marco Giammarini (warcomeb)
+ *
+ * \section license License
+ *
+ * \code{.unparsed}
+ * Permission is hereby granted, free of charge, to any person obtaining a copy
+ * of this software and associated documentation files (the "Software"), to deal
+ * in the Software without restriction, including without limitation the rights
+ * to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+ * copies of the Software, and to permit persons to whom the Software is
+ * furnished to do so, subject to the following conditions:
+ *
+ * The above copyright notice and this permission notice shall be included in
+ * all copies or substantial portions of the Software.
+ *
+ * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+ * IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+ * FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+ * AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+ * LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+ * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
+ * THE SOFTWARE.
+ * \endcode
  */
 
 /*!
@@ -69,12 +93,21 @@ extern "C"
 #include <stdio.h>
 
 /*!
+ * \defgroup WNMEA_Init WNMEA Initialization APIs
+ * \{
+ */
+
+/*!
  *
  * \note The device handle must be just configured!
  *
  * \param[in] dev: The peripheral device handle to use.
  */
 void WNMEA_init (Uart_DeviceHandle dev, WNMEA_MessageCallback_t cb);
+
+/*!
+ * \}
+ */
 
 /*!
  * \defgroup WNMEA_Command WNMEA Command APIs
@@ -86,11 +119,9 @@ void WNMEA_init (Uart_DeviceHandle dev, WNMEA_MessageCallback_t cb);
  */
 void WNMEA_ckeck (void);
 
-
 /*!
  * \}
  */
-
 
 /*!
  * \}
