@@ -46,7 +46,7 @@ extern "C"
  *
  * \section changelog ChangeLog
  *
- * \li v1.0.0 of 2022/02/xx - First release
+ * \li v1.0.0 of 2022/03/04 - First release
  *
  * \section library External Library
  *
@@ -55,6 +55,93 @@ extern "C"
  * framework for multi microcontroller.
  *
  * \section example Example
+ *
+ * \code{.c}
+ * void cb (WNMEA_MessageParsed_t msg, WNMEA_MessageType_t type)
+ * {
+ *     if (type == WNMEA_MESSAGETYPE_RMC)
+ *     {
+ *         Uart_sendStringln(OB_UART2,"RMC");
+ *     }
+ *     else if (type == WNMEA_MESSAGETYPE_GGA)
+ *     {
+ *         Uart_sendStringln(OB_UART2,"GGA");
+ *     }
+ * }
+ *
+ * void main (void)
+ * {
+ *     Clock_Config clkConfig =
+ *     {
+ *         .source = CLOCK_INTERNAL_HSI | CLOCK_EXTERNAL_LSE_CRYSTAL,
+ *
+ *         .sysSource = CLOCK_SYSTEMSOURCE_HSI,
+ *
+ *         .hsiState = CLOCK_OSCILLATORSTATE_ON,
+ *         .lsiState = CLOCK_OSCILLATORSTATE_OFF,
+ *         .lseState = CLOCK_OSCILLATORSTATE_ON,
+ *
+ *         .output = CLOCK_OUTPUT_SYSCLK | CLOCK_OUTPUT_HCLK | CLOCK_OUTPUT_PCLK1 | CLOCK_OUTPUT_PCLK2,
+ *         .ahbDivider = CLOCK_AHBDIVIDER_1,
+ *         .apb1Divider = CLOCK_APBDIVIDER_1,
+ *         .apb2Divider = CLOCK_APBDIVIDER_1,
+ *     };
+ *
+ *     // Uart1 - GPS
+ *     Uart_Config uart1Config =
+ *     {
+ *         .clockSource = UART_CLOCKSOURCE_SYSCLK,
+ *         .mode = UART_MODE_BOTH,
+ *
+ *         .rxPin = UART_PINS_PA10,
+ *         .txPin = UART_PINS_PA9,
+ *
+ *         .baudrate = 9600,
+ *
+ *         .dataBits = UART_DATABITS_EIGHT,
+ *         .flowControl = UART_FLOWCONTROL_NONE,
+ *         .parity = UART_PARITY_NONE,
+ *         .stop = UART_STOPBITS_ONE,
+ *     };
+ *
+ *     // Uart2 - Output
+ *     Uart_Config uartOutConfig =
+ *     {
+ *         .clockSource = UART_CLOCKSOURCE_SYSCLK,
+ *         .mode = UART_MODE_BOTH,
+ *
+ *         .rxPin = UART_PINS_PA3,
+ *         .txPin = UART_PINS_PA2,
+ *
+ *         .baudrate = 115200,
+ *
+ *         .dataBits = UART_DATABITS_EIGHT,
+ *         .flowControl = UART_FLOWCONTROL_NONE,
+ *         .parity = UART_PARITY_NONE,
+ *         .stop = UART_STOPBITS_ONE,
+ *     };
+ *
+ *     // Initialize clock...
+ *     Clock_init(&clkConfig);
+ *
+ *     Uart_init(OB_UART1, &uart1Config);
+ *     Uart_init(OB_UART2, &uartOutConfig);
+ *
+ *     WNMEA_MessageCallback_t mycb =
+ *     {
+ *         .rmc = cb,
+ *         .gga = cb,
+ *     };
+ *
+ *     WNMEA_init(OB_UART1,mycb);
+ *
+ *     while (1)
+ *     {
+ *         WNMEA_ckeck();
+ *     }
+ * }
+ *
+ * \endcode
  *
  * \section credits Credits
  * \li Marco Giammarini (warcomeb)
@@ -98,10 +185,11 @@ extern "C"
  */
 
 /*!
- *
+ * This function initialize all WNMEA library.
  * \note The device handle must be just configured!
  *
  * \param[in] dev: The peripheral device handle to use.
+ * \param[in] cb: List of used callback
  */
 void WNMEA_init (Uart_DeviceHandle dev, WNMEA_MessageCallback_t cb);
 
@@ -115,7 +203,7 @@ void WNMEA_init (Uart_DeviceHandle dev, WNMEA_MessageCallback_t cb);
  */
 
 /*!
- *
+ * This function must be called cyclically to check and manage the message.
  */
 void WNMEA_ckeck (void);
 
